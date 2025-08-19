@@ -16,3 +16,9 @@
 	•	曜日/時刻の型（DayOfWeek = 0..6、HH:mmのパース器）を定義
 	•	伸び（PWA）
 	•	SW＋Background Syncでオフライン時のチェックインを後送信（今回はローカル完結でも、拡張の布石）
+
+# プロジェクト作成
+npm create vite@latest habit-tracker -- --template react-ts
+cd habit-tracker
+npm i
+npm run dev
