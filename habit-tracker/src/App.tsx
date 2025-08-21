@@ -1,23 +1,37 @@
-import {useEffect, useReducer, useMemo} from "react";
+import {useEffect, useMemo, useReducer, useState, useCallback} from "react";
 import {reducer} from "./state/reducer";
 import {loadState} from "./storage/local";
 import HabitForm from "./components/HabitForm";
+import CalendarGrid from "./components/CalendarGrid";
 import type {Habit, Entry} from "./domain/types";
 import {isSameDay} from "./utils/date";
-import CalendarGrid from "./components/CalendarGrid.tsx";
+import {useHabitAlarm} from "./hooks/useHabitAlarm";
+import Toast from "./components/Toast";
 
 function App() {
     const [state, dispatch] = useReducer(reducer, {habits: [], entries: []});
-
+    const [toasts, setToasts] = useState<{ id: string; message: string }[]>([]);
     useEffect(() => {
         dispatch({type: "INIT", payload: loadState()});
     }, []);
+    const pushToast = useCallback((message: string) => {
+        const id = crypto.randomUUID();
+        setToasts(t => [...t, {id, message}]);
+    }, []);
+    const popToast = useCallback((id: string) => {
+        setToasts(t => t.filter(x => x.id !== id))
+    }, []);
+
+    useHabitAlarm(state.habits, (h: Habit) => {
+        pushToast(`「${h.title}」の時間です（目標 ${h.targetTime}）`);
+    }, 3);
 
     const checkedTodayMap = useMemo(() => {
         const map = new Map<string, boolean>();
         for (const h of state.habits) {
             const done = state.entries.some(
-                (e) => e.habitId === h.id && isSameDay(e.checkedAt, Date.now()));
+                (e) => e && e.habitId === h.id && typeof e.checkedAt === "number" && isSameDay(e.checkedAt, Date.now())
+            );
             map.set(h.id, done);
         }
         return map;
@@ -34,15 +48,14 @@ function App() {
 
     return (
         <main style={{maxWidth: 720, margin: "24px auto", padding: 16}}>
-            <h1>習慣トラッカー（段階3：チェックインのBabyStep）</h1>
+            <h1>習慣トラッカー（段階4：リマインド通知）</h1>
 
-            <HabitForm onSubmit={(h: Habit) =>
-                dispatch({type: "ADD_HABIT", payload: h})
-            }/>
+            <HabitForm onSubmit={(h: Habit) => dispatch({type: "ADD_HABIT", payload: h})}/>
 
             <h2>習慣一覧</h2>
-            <ul style={{display: "grid", gap: 12}}>
+            <ul style={{display: "grid", gap: 16}}>
                 {state.habits.map((h) => {
+                    const doneToday = checkedTodayMap.get(h.id) === true;
                     return (
                         <li key={h.id} style={{display: "flex", flexDirection: "column", gap: 8}}>
                             <div style={{display: "flex", gap: 12, alignItems: "center"}}>
@@ -51,25 +64,22 @@ function App() {
                                 </div>
                                 <button
                                     onClick={() => checkInToday(h)}
-                                    disabled={checkedTodayMap.get(h.id) === true}
-                                    title={checkedTodayMap.get(h.id) ? "今日は済み" : "今日やった！"}
+                                    disabled={doneToday}
+                                    title={doneToday ? "今日は済み" : "今日やった！"}
                                 >
-                                    {checkedTodayMap.get(h.id) ? "済み" : "今日やった！"}
+                                    {doneToday ? "済み" : "今日やった！"}
                                 </button>
                             </div>
-
-                            {/* ★ 当月カレンダー */}
                             <CalendarGrid habitId={h.id} entries={state.entries}/>
                         </li>
                     );
                 })}
             </ul>
 
-            <p style={{opacity: 0.7, marginTop: 12}}>
-                習慣数: {state.habits.length} / 今日の達成: {
-                state.habits.filter(h => checkedTodayMap.get(h.id)).length
-            }
-            </p>
+            {/* トースト描画（複数対応） */}
+            {toasts.map(t => (
+                <Toast key={t.id} message={t.message} onClose={() => popToast(t.id)}/>
+            ))}
         </main>
     );
 }
