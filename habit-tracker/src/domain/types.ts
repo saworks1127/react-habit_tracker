@@ -13,7 +13,7 @@ export interface Habit {
 export interface Entry {
     id: string;
     habitId: string;
-    createdAt: number;
+    checkedAt: number;
 }
 export interface State {
     habits: Habit[];
