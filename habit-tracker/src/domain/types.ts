@@ -4,7 +4,7 @@ export type HHmm = `${number}${number}:${number}${number}`;
 export interface Habit {
     id: string;
     title: string;
-    dayOfWeek: DayOfWeek[];
+    daysOfWeek: DayOfWeek[];
     targetTime: HHmm;
     notes?: string;
     createdAt: number;
